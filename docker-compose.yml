@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gengineer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gengineer
+      POSTGRES_PASSWORD: gengineer
+      POSTGRES_DB: gengineer
+    ports:
+      - "5432:5432"
+    volumes:
+      - gengineer_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gengineer -d gengineer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  gengineer_pg_data:

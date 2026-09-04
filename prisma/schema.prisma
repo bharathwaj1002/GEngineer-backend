@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CANDIDATE
+}
+
+enum Track {
+  ONE_DAY
+  TWO_DAY
+}
+
+enum AssignmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  EVALUATED
+  EXPIRED
+}
+
+enum Recommendation {
+  STRONG_YES
+  YES
+  MAYBE
+  NO
+}
+
+enum RowKind {
+  REPEATABLE
+  LINK
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  role             Role
+  refreshTokenHash String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  candidate Candidate?
+}
+
+model Candidate {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidateId String   @unique
+  fullName    String
+  phone       String?
+  roleTitle   String?
+  department  String?
+  experience  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments Assignment[]
+}
+
+model Assignment {
+  id                String           @id @default(cuid())
+  candidateId       String
+  candidate         Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  track             Track
+  taskVersion       String
+  startDate         DateTime
+  startTime         String
+  deadline          DateTime
+  status            AssignmentStatus @default(SCHEDULED)
+  actualStartedAt   DateTime?
+  actualSubmittedAt DateTime?
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  submission Submission?
+
+  @@index([candidateId])
+  @@index([status])
+}
+
+model Submission {
+  id           String    @id @default(cuid())
+  assignmentId String    @unique
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  answers      Json      @default("{}")
+  submittedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  repeatableRows RepeatableRow[]
+  linkItems      LinkItem[]
+  mediaReview    MediaReview?
+  evaluation     Evaluation?
+}
+
+model RepeatableRow {
+  id           String     @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  sectionId    String
+  kind         RowKind
+  order        Int
+  data         Json       @default("{}")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([submissionId, sectionId])
+}
+
+model LinkItem {
+  id           String     @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  sectionId    String
+  order        Int
+  title        String?
+  linkType     String?
+  url          String?
+  note         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([submissionId, sectionId])
+}
+
+model MediaReview {
+  id                 String     @id @default(cuid())
+  submissionId       String     @unique
+  submission         Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  topicClarity       Int?
+  unityClarity       Int?
+  nonTechClarity     Int?
+  confidence         Int?
+  overall            Int?
+  reviewerNotes      String?
+  questionsAsked     String?
+  explanationSummary String?
+  reviewedByUserId   String?
+  updatedAt          DateTime   @updatedAt
+}
+
+model Evaluation {
+  id                 String          @id @default(cuid())
+  submissionId       String          @unique
+  submission         Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  areaScores         Json            @default("{}")
+  finalTechnical     Int?
+  finalTeaching      Int?
+  finalProduction    Int?
+  finalCommunication Int?
+  recommendation     Recommendation?
+  notes              String?
+  evaluatedByUserId  String?
+  isFinal            Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
