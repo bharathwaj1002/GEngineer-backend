@@ -15,10 +15,15 @@ export class AuthController {
   ) {}
 
   private cookieOptions(maxAgeMs: number) {
+    // Frontend and backend live on different Vercel domains in production, so the
+    // auth cookies are cross-site from the browser's perspective and need
+    // SameSite=None (which requires Secure). Locally both run on http://localhost,
+    // where SameSite=Lax + non-Secure is the correct (and only workable) choice.
+    const isProd = process.env.NODE_ENV === 'production';
     return {
       httpOnly: true,
-      sameSite: 'lax' as const,
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+      secure: isProd,
       maxAge: maxAgeMs,
       path: '/',
     };
